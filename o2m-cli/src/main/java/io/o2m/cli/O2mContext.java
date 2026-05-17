@@ -53,7 +53,7 @@ public class O2mContext {
         registry.register(OracleDdlGenerator.class, new DefaultOracleDdlGenerator());
         registry.register(MysqlDdlGenerator.class, new DefaultMysqlDdlGenerator(appConfig.getRules()));
         registry.register(CoverageValidator.class, new TableCoverageChecker());
-        registry.register(SchemaComparator.class, new DefaultSchemaComparator());
+        registry.register(SchemaComparator.class, new DefaultSchemaComparator(appConfig.getRules()));
         registry.register(DdlParser.class, new JsqlOracleDdlParser());
         registry.register(SnapshotStore.class, new FileSnapshotStore());
         registry.register(MigrationPlanner.class,

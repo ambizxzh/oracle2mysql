@@ -1,6 +1,7 @@
 package io.o2m.translate.ddl;
 
 import io.o2m.core.config.RulesConfig;
+import io.o2m.core.util.ConstraintUtil;
 import io.o2m.core.util.IdentifierUtil;
 import io.o2m.model.*;
 import io.o2m.spi.MysqlDdlGenerator;
@@ -51,7 +52,8 @@ public class DefaultMysqlDdlGenerator implements MysqlDdlGenerator {
                     .append(" (").append(joinCols(fk.referencedColumns())).append(")");
         }
         for (CheckConstraintMetadata chk : table.checks()) {
-            if (chk.manualReview() || chk.expression() == null) continue;
+            if (chk.manualReview() || chk.expression() == null
+                    || ConstraintUtil.isRedundantNotNullCheck(chk, table)) continue;
             String chkName = IdentifierUtil.safeConstraintName(chk.name(), 64);
             sb.append(",\n  CONSTRAINT ").append(IdentifierUtil.toMysql(chkName, rules))
                     .append(" CHECK (").append(chk.expression()).append(")");

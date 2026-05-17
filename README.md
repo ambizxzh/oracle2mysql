@@ -64,7 +64,26 @@ java -jar $JAR export \
 
 java -jar $JAR apply \
   --input ./out/schema --config config/application.yaml
+
+java -jar $JAR live-diff \
+  --oracle-schema HR --config config/application.yaml
 ```
+
+### live-diff 说明
+
+同时连接配置中的 Oracle 与 MySQL：从 Oracle 字典采集并经类型映射得到**期望 Canonical**，从 MySQL 采集**实库 Canonical**，输出 diff 报告到 `out/reports/`。
+
+```bash
+java -jar $JAR live-diff \
+  --oracle-schema HR \
+  --config config/application.yaml \
+  --tables EMPLOYEES,DEPARTMENTS \
+  --save-expected    # 可选：将期望快照写入 out/snapshots/<tag>/
+```
+
+与 `export` + `diff` 等价，但**不落盘也能对比**；`--save-expected` 便于审计或后续 `verify`。
+
+对比项含：列类型、唯一/外键/**约束名**（Oracle `EMP_EMAIL_UK` → MySQL `emp_email_uk`）、索引名等。主键在 DDL 中仍生成 `` CONSTRAINT `dept_pk` PRIMARY KEY ``，但 **MySQL/InnoDB 数据字典中主键名固定为 `PRIMARY`**，对比时视为与 Oracle 映射名等价。请用 `apply` 执行 `.mysql.sql` 后再 `live-diff`。
 
 ## DBeaver 连接（Win11 → WSL Docker）
 
@@ -149,7 +168,11 @@ java -jar $JAR export \
 java -jar $JAR import \
   --ddl ./oracle-ddl/ --oracle-schema HR --tag v1 --config config/application.yaml
 
-# 期望快照 vs MySQL 实库
+# Oracle + MySQL 双库直连实时对比（无需先 export）
+java -jar $JAR live-diff \
+  --oracle-schema HR --config config/application.yaml
+
+# 期望快照（文件）vs MySQL 实库
 java -jar $JAR diff \
   --expected ./out/snapshots/v1 --config config/application.yaml
 
@@ -209,8 +232,9 @@ java -jar $JAR export \
 | 场景 | 命令 | 依赖 |
 |------|------|------|
 | 有 Oracle 字典查询权限 | `export` | Oracle + 配置 |
+| **双库结构实时对比** | **`live-diff`** | **Oracle + MySQL** |
 | 仅有 DDL 文件 | `import --ddl ...` | 不需要 Oracle 连接 |
-| 对比 / 校验 MySQL | `diff` / `verify` | MySQL + 已有 `out/snapshots` |
+| 对比 / 校验 MySQL（离线期望） | `diff` / `verify` | MySQL + 已有 `out/snapshots` |
 | 下发 DDL | `apply` | MySQL |
 
 ### 4. 网络说明
@@ -235,7 +259,7 @@ java -jar $JAR export \
 | Main class | `io.o2m.cli.O2mApplication` |
 | Module | `o2m-cli` |
 | Working directory | 项目根目录 `.../oracle2mysql` |
-| Program arguments | `export --oracle-schema HR --tag v1 --config config/application.yaml` |
+| Program arguments | `live-diff --oracle-schema HR --config config/application.yaml` |
 | Environment variables | `O2M_ORACLE_PASSWORD=hr;O2M_MYSQL_PASSWORD=o2m_root` |
 
 其他子命令只需修改 **Program arguments**，例如：

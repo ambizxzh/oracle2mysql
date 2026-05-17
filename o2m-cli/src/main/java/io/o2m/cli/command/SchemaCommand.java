@@ -1,5 +1,6 @@
 package io.o2m.cli.command;
 
+import io.o2m.cli.LiveDiffService;
 import io.o2m.cli.O2mContext;
 import io.o2m.cli.SchemaExportService;
 import io.o2m.core.json.JsonSupport;
@@ -21,6 +22,7 @@ import java.util.concurrent.Callable;
         SchemaCommand.Export.class,
         SchemaCommand.ImportCmd.class,
         SchemaCommand.Diff.class,
+        SchemaCommand.LiveDiff.class,
         SchemaCommand.Apply.class,
         SchemaCommand.Verify.class,
         SchemaCommand.MigrateGroup.class
@@ -109,6 +111,35 @@ public class SchemaCommand implements Callable<Integer> {
             Path reports = Path.of(ctx.appConfig().getOutput().getBaseDir()).resolve("reports");
             monitor.writeReports(result, reports);
             System.out.println("Diff: " + result.changes().size() + " changes, errors=" + result.hasErrors());
+            return result.hasErrors() ? 1 : 0;
+        }
+    }
+
+    @CommandLine.Command(name = "live-diff",
+            description = "Live compare: Oracle dictionary (mapped) vs MySQL metadata, both via JDBC")
+    static class LiveDiff implements Callable<Integer> {
+        @CommandLine.Option(names = "--config")
+        Path config;
+        @CommandLine.Option(names = "--oracle-schema", required = true)
+        String oracleSchema;
+        @CommandLine.Option(names = "--mysql-database")
+        String mysqlDb;
+        @CommandLine.Option(names = "--tables", split = ",")
+        List<String> tables;
+        @CommandLine.Option(names = "--tag", defaultValue = "live-diff")
+        String tag;
+        @CommandLine.Option(names = "--save-expected",
+                description = "Persist Oracle-derived canonical snapshot under output/snapshots/<tag>")
+        boolean saveExpected;
+
+        @Override
+        public Integer call() throws Exception {
+            O2mContext ctx = ctx(config);
+            DiffResult result = new LiveDiffService(ctx)
+                    .compare(oracleSchema, mysqlDb, tables, tag, saveExpected);
+            Path reports = Path.of(ctx.appConfig().getOutput().getBaseDir()).resolve("reports");
+            ctx.registry().require(SchemaMonitor.class).writeReports(result, reports);
+            System.out.println("Live-diff: " + result.changes().size() + " changes, errors=" + result.hasErrors());
             return result.hasErrors() ? 1 : 0;
         }
     }

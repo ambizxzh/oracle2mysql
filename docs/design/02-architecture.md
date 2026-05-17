@@ -36,4 +36,22 @@ Oracle ALL_* / DDL parse → Canonical → TypeMapper → MysqlDdlGenerator
 
 ## 监测时机
 
-生成后（coverage）→ diff → apply → verify → migrate 后再 verify。
+| 方式 | 期望侧 | 实库侧 | 命令 |
+|------|--------|--------|------|
+| 离线对比 | 磁盘快照 `canonical.json` | MySQL JDBC | `diff` / `verify` |
+| **双库直连** | Oracle JDBC → 类型映射 Canonical | MySQL JDBC | `live-diff`（含 PK/UK/FK/CHECK/索引**约束名**） |
+| 两步等价 | `export` 写快照后 | MySQL JDBC | `export` + `diff` |
+
+典型流程：生成后（coverage）→ `live-diff` 或 `diff` → `apply` → `verify` → `migrate` 后再 `verify`。
+
+### live-diff 流水线
+
+```
+Oracle ALL_* ──► TypeMapper ──► expected (Canonical)
+                                      │
+MySQL INFORMATION_SCHEMA ─────────────┼──► SchemaComparator ──► reports/
+                                      │
+                                 actual (Canonical)
+```
+
+实现：[LiveDiffService.java](../../o2m-cli/src/main/java/io/o2m/cli/LiveDiffService.java)
