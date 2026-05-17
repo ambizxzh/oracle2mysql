@@ -1,0 +1,30 @@
+oracle:
+  jdbcUrl: "jdbc:oracle:thin:@localhost:1521:XE"
+  username: "hr"
+  password: "${O2M_ORACLE_PASSWORD}"
+  schema: "HR"
+
+mysql:
+  jdbcUrl: "jdbc:mysql://localhost:3306/hr?useSSL=false&allowPublicKeyRetrieval=true"
+  username: "root"
+  password: "${O2M_MYSQL_PASSWORD}"
+  database: "hr"
+
+output:
+  baseDir: "./out"
+
+rules:
+  identifierCase: lower
+  quoteIdentifiers: true
+  charset: utf8mb4
+  collation: utf8mb4_unicode_ci
+  engine: InnoDB
+
+migration:
+  allowDestructive: false
+  historyTable: o2m_schema_history
+
+coverage:
+  failOnBlocker: true
+
+typeMappingFile: "./mapping/type-mapping.yaml"

@@ -1,4 +1,17 @@
+# Local config (may contain credentials)
+config/application.yaml
+config/application-*.yaml
+!config/application.yaml.example
+
+# IDE (IntelliJ IDEA — personal / machine-specific)
+.idea/
+
+# Maven local JVM overrides (this repo uses jvm.config with local JAVA_HOME path)
+.mvn/
+
 # Compiled class file
+target/
+out/
 *.class
 
 # Log file

@@ -1,0 +1,44 @@
+# Oracle 11g XE + MySQL 8.0.25 for local oracle2mysql development
+name: o2m
+
+services:
+  oracle:
+    image: ghcr.io/gvenzl/oracle-xe:11
+    container_name: o2m-oracle11g
+    ports:
+      - "1521:1521"
+    environment:
+      ORACLE_PASSWORD: oracle
+      APP_USER: hr
+      APP_USER_PASSWORD: hr
+    volumes:
+      - ./oracle-init:/container-entrypoint-initdb.d
+    shm_size: "1gb"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+  mysql:
+    image: mysql:8.0.25
+    container_name: o2m-mysql8025
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: o2m_root
+      MYSQL_DATABASE: hr
+    volumes:
+      - o2m_mysql_data:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-po2m_root"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  o2m_mysql_data:

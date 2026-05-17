@@ -1,0 +1,28 @@
+defaults:
+  VARCHAR2: "VARCHAR({length})"
+  NVARCHAR2: "VARCHAR({length})"
+  CHAR: "CHAR({length})"
+  DATE: "DATETIME"
+  TIMESTAMP: "DATETIME(6)"
+  CLOB: "LONGTEXT"
+  BLOB: "LONGBLOB"
+  RAW: "VARBINARY({length})"
+  FLOAT: "DOUBLE"
+  BINARY_FLOAT: "FLOAT"
+  BINARY_DOUBLE: "DOUBLE"
+
+numberSemantic:
+  idColumnPatterns:
+    - "(?i)^id$"
+    - "(?i)_id$"
+    - "(?i)^.*_pk$"
+  pkPrefer: bigint
+  defaultUnspecified: "DECIMAL(38,16)"
+  integerNumberPrefer: bigint
+  mysqlDecimalMaxPrecision: 65
+  mysqlDecimalMaxScale: 30
+
+defaultsValue:
+  SYSDATE: "CURRENT_TIMESTAMP"
+
+overrides: []
