@@ -59,36 +59,50 @@ mvn -q clean package -DskipTests
 
 JAR=o2m-cli/target/o2m-cli-1.0.0-SNAPSHOT.jar
 
-java -jar $JAR schema export \
+java -jar $JAR export \
   --oracle-schema HR --tag v1 --config config/application.yaml
 
-java -jar $JAR schema apply \
+java -jar $JAR apply \
   --input ./out/schema --config config/application.yaml
 ```
 
 ## DBeaver 连接（Win11 → WSL Docker）
 
-WSL2 中端口已映射到 `0.0.0.0`，**Windows 上 DBeaver 使用 `localhost` 即可**（与 WSL 内相同）。
-
 | 项目 | Oracle 11g XE | MySQL 8.0.25 |
 |------|---------------|--------------|
 | 主机 | `localhost` | `localhost` |
-| 端口 | `1521` | `3306` |
+| 端口 | `1521` | **`3307`** |
 | 库/服务名 | **SID = `XE`**（非 ORCL） | 数据库 `hr` |
 | 应用账号 | `hr` / `hr` | `root` / `o2m_root` |
 | 管理账号 | `system` / `oracle` 或 `sys` / `oracle`（SYSDBA） | — |
 
 **DBeaver 配置要点**
 
-- **Oracle**：驱动 Oracle Thin；连接类型选 **SID**，SID 填 `XE`；浏览 Schema `HR`（含 `DEPARTMENTS`、`EMPLOYEES`）
-- **MySQL**：驱动 MySQL 8；JDBC URL `jdbc:mysql://localhost:3306/hr`；驱动属性可设 `allowPublicKeyRetrieval=true`
-- **连不上时**：在 WSL 执行 `docker ps`，确认 `o2m-oracle11g`、`o2m-mysql8025` 在运行，且端口为 `0.0.0.0:1521->1521`、`0.0.0.0:3306->3306`
+- **Oracle**：驱动 Oracle Thin；连接类型选 **SID**，SID 填 `XE`；主机 `localhost` 即可；浏览 Schema `HR`
+- **MySQL**：驱动 MySQL 8；主机 `localhost`，端口 **`3307`**（非 3306）；用户 `root`，密码 `o2m_root`；驱动属性 `allowPublicKeyRetrieval=true`
 
-与项目 [config/application.yaml](config/application.yaml) 对应：
+### 为何 MySQL 用 3307
+
+Docker 映射为 `3307:3306`（见 [docker-compose.yml](docker/docker-compose.yml)），避免与 **Win11 本机 MySQL** 占用 `3306` 冲突。若 DBeaver 仍填 `localhost:3306`，可能连到 Windows 那台并报：
+
+```text
+Access denied for user 'root'@'localhost' (using password: YES)
+```
+
+**备选**：不用 `localhost:3307` 时，可用 WSL IP（`hostname -I` 第一个）+ 端口 `3307`。
+
+### 连不上时排查
+
+- WSL 执行 `docker ps`，确认 `o2m-mysql8025` 端口为 `0.0.0.0:3307->3306`
+- 连上后版本应为 **8.0.25**；若是其他版本，说明连错实例
+
+### 与项目配置
+
+[config/application.yaml](config/application.yaml) 与 DBeaver 一致，均使用 **`localhost:3307`**：
 
 ```yaml
 oracle.jdbcUrl: jdbc:oracle:thin:@localhost:1521:XE
-mysql.jdbcUrl:  jdbc:mysql://localhost:3306/hr?useSSL=false&allowPublicKeyRetrieval=true
+mysql.jdbcUrl:  jdbc:mysql://localhost:3307/hr?useSSL=false&allowPublicKeyRetrieval=true
 ```
 
 ## 构建
@@ -97,7 +111,7 @@ mysql.jdbcUrl:  jdbc:mysql://localhost:3306/hr?useSSL=false&allowPublicKeyRetrie
 export JAVA_HOME=/path/to/jdk-17
 export PATH="$JAVA_HOME/bin:$PATH"
 mvn -q clean package
-java -jar o2m-cli/target/o2m-cli-1.0.0-SNAPSHOT.jar schema --help
+java -jar o2m-cli/target/o2m-cli-1.0.0-SNAPSHOT.jar --help
 ```
 
 ## 配置
@@ -124,32 +138,32 @@ export O2M_MYSQL_PASSWORD=o2m_root
 
 ## CLI
 
-根命令为 `schema`，示例如下（`$JAR` 即 `o2m-cli/target/o2m-cli-1.0.0-SNAPSHOT.jar`）：
+子命令组在帮助里显示为 `schema [COMMAND]`，但入口类已是 `SchemaCommand`，**命令行不要写前面的 `schema`**。`$JAR` 即 `o2m-cli/target/o2m-cli-1.0.0-SNAPSHOT.jar`：
 
 ```bash
 # 从 Oracle 字典导出双端 DDL + 快照
-java -jar $JAR schema export \
+java -jar $JAR export \
   --oracle-schema HR --tag v1 --config config/application.yaml
 
 # 从 Oracle DDL 文件导入（JSQLParser → Canonical，无需连接 Oracle）
-java -jar $JAR schema import \
+java -jar $JAR import \
   --ddl ./oracle-ddl/ --oracle-schema HR --tag v1 --config config/application.yaml
 
 # 期望快照 vs MySQL 实库
-java -jar $JAR schema diff \
+java -jar $JAR diff \
   --expected ./out/snapshots/v1 --config config/application.yaml
 
 # 执行 MySQL 脚本
-java -jar $JAR schema apply \
+java -jar $JAR apply \
   --input ./out/schema --config config/application.yaml
 
 # 执行后校验
-java -jar $JAR schema verify \
+java -jar $JAR verify \
   --expected ./out/snapshots/v1 --config config/application.yaml
 
 # 演进
-java -jar $JAR schema migrate plan --from v1 --tag v2 --config config/application.yaml
-java -jar $JAR schema migrate apply --input ./out/migrations --config config/application.yaml
+java -jar $JAR migrate plan --from v1 --tag v2 --config config/application.yaml
+java -jar $JAR migrate apply --input ./out/migrations --config config/application.yaml
 ```
 
 ## 连接远程或其他数据库
@@ -186,7 +200,7 @@ mysql:
 export O2M_ORACLE_PASSWORD='...'
 export O2M_MYSQL_PASSWORD='...'
 
-java -jar $JAR schema export \
+java -jar $JAR export \
   --oracle-schema HR --tag v1 --config config/application-remote.yaml
 ```
 
@@ -194,10 +208,10 @@ java -jar $JAR schema export \
 
 | 场景 | 命令 | 依赖 |
 |------|------|------|
-| 有 Oracle 字典查询权限 | `schema export` | Oracle + 配置 |
-| 仅有 DDL 文件 | `schema import --ddl ...` | 不需要 Oracle 连接 |
-| 对比 / 校验 MySQL | `schema diff` / `schema verify` | MySQL + 已有 `out/snapshots` |
-| 下发 DDL | `schema apply` | MySQL |
+| 有 Oracle 字典查询权限 | `export` | Oracle + 配置 |
+| 仅有 DDL 文件 | `import --ddl ...` | 不需要 Oracle 连接 |
+| 对比 / 校验 MySQL | `diff` / `verify` | MySQL + 已有 `out/snapshots` |
+| 下发 DDL | `apply` | MySQL |
 
 ### 4. 网络说明
 
@@ -221,13 +235,13 @@ java -jar $JAR schema export \
 | Main class | `io.o2m.cli.O2mApplication` |
 | Module | `o2m-cli` |
 | Working directory | 项目根目录 `.../oracle2mysql` |
-| Program arguments | `schema export --oracle-schema HR --tag v1 --config config/application.yaml` |
+| Program arguments | `export --oracle-schema HR --tag v1 --config config/application.yaml` |
 | Environment variables | `O2M_ORACLE_PASSWORD=hr;O2M_MYSQL_PASSWORD=o2m_root` |
 
 其他子命令只需修改 **Program arguments**，例如：
 
 ```
-schema diff --expected ./out/snapshots/v1 --config config/application.yaml
+diff --expected ./out/snapshots/v1 --config config/application.yaml
 ```
 
 ### 调试

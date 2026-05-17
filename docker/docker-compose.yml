@@ -25,7 +25,7 @@ services:
     image: mysql:8.0.25
     container_name: o2m-mysql8025
     ports:
-      - "3306:3306"
+      - "3307:3306"
     environment:
       MYSQL_ROOT_PASSWORD: o2m_root
       MYSQL_DATABASE: hr
