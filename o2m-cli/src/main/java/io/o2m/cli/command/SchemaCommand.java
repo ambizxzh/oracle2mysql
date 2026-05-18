@@ -144,11 +144,13 @@ public class SchemaCommand implements Callable<Integer> {
         }
     }
 
-    @CommandLine.Command(name = "apply", description = "Apply generated MySQL DDL")
+    @CommandLine.Command(name = "apply",
+            description = "Apply generated MySQL DDL (directory with schema.mysql.sql, or a single .sql file)")
     static class Apply implements Callable<Integer> {
         @CommandLine.Option(names = "--config")
         Path config;
-        @CommandLine.Option(names = "--input", required = true)
+        @CommandLine.Option(names = "--input", required = true,
+                description = "Schema directory (prefers schema.mysql.sql) or a single SQL file")
         Path input;
         @CommandLine.Option(names = "--dry-run")
         boolean dryRun;
@@ -156,7 +158,7 @@ public class SchemaCommand implements Callable<Integer> {
         @Override
         public Integer call() throws Exception {
             O2mContext ctx = ctx(config);
-            ctx.registry().require(MysqlSchemaApplier.class).applyDirectory(input, dryRun);
+            ctx.registry().require(MysqlSchemaApplier.class).apply(input, dryRun);
             return 0;
         }
     }

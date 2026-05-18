@@ -83,7 +83,9 @@ java -jar $JAR live-diff \
 
 与 `export` + `diff` 等价，但**不落盘也能对比**；`--save-expected` 便于审计或后续 `verify`。
 
-对比项含：列类型、唯一/外键/**约束名**（Oracle `EMP_EMAIL_UK` → MySQL `emp_email_uk`）、索引名等。主键在 DDL 中仍生成 `` CONSTRAINT `dept_pk` PRIMARY KEY ``，但 **MySQL/InnoDB 数据字典中主键名固定为 `PRIMARY`**，对比时视为与 Oracle 映射名等价。请用 `apply` 执行 `.mysql.sql` 后再 `live-diff`。
+对比项含：列类型、唯一/外键/**约束名**（Oracle `EMP_EMAIL_UK` → MySQL `emp_email_uk`）、索引名等。主键在 DDL 中仍生成 `` CONSTRAINT `dept_pk` PRIMARY KEY ``，但 **MySQL/InnoDB 数据字典中主键名固定为 `PRIMARY`**，对比时视为与 Oracle 映射名等价。请用 `apply` 执行 `out/schema/schema.mysql.sql`（或目录，见下）后再 `live-diff`。
+
+`export` 会同时写出合并脚本与单表文件（见下节）。`apply --input ./out/schema` 若存在 `schema.mysql.sql` 则只执行该文件，避免与单表 DDL 重复建表。
 
 ## DBeaver 连接（Win11 → WSL Docker）
 
@@ -188,6 +190,17 @@ java -jar $JAR verify \
 java -jar $JAR migrate plan --from v1 --tag v2 --config config/application.yaml
 java -jar $JAR migrate apply --input ./out/migrations --config config/application.yaml
 ```
+
+### export 产物（`out/schema/`）
+
+| 文件 | 说明 |
+|------|------|
+| **`schema.mysql.sql`** / **`schema.oracle.sql`** | 全库合并 DDL，适合 `apply` 或 `mysql < schema.mysql.sql` 一次执行 |
+| **`<table>.mysql.sql`** / **`<table>.oracle.sql`** | 单表 DDL，**仍会生成并保留**，便于按表查看、Code Review，或与 Git / 其他工具做逐表 diff |
+| `<table>.coverage.json` | 该表的类型映射覆盖率报告 |
+| `out/snapshots/<tag>/canonical.json` | 结构化快照（供 `diff` / `verify` 使用） |
+
+合并脚本与单表文件内容一致，只是粒度不同：需要整库下发用 `schema.mysql.sql`；需要只看或对比某张表时用 `employees.mysql.sql` 等。
 
 ## 连接远程或其他数据库
 
