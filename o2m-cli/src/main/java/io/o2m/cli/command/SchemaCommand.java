@@ -56,11 +56,14 @@ public class SchemaCommand implements Callable<Integer> {
         Path output;
         @CommandLine.Option(names = "--tables", split = ",")
         List<String> tables;
+        @CommandLine.Option(names = "--split-tables",
+                description = "Also generate separate .sql file for each table")
+        boolean splitTables;
 
         @Override
         public Integer call() throws Exception {
             O2mContext ctx = ctx(config);
-            new SchemaExportService(ctx).export(oracleSchema, tag, output, tables);
+            new SchemaExportService(ctx).export(oracleSchema, tag, output, tables, splitTables);
             return 0;
         }
     }
@@ -77,6 +80,9 @@ public class SchemaCommand implements Callable<Integer> {
         String tag;
         @CommandLine.Option(names = "--output")
         Path output;
+        @CommandLine.Option(names = "--split-tables",
+                description = "Also generate separate .sql file for each table")
+        boolean splitTables;
 
         @Override
         public Integer call() throws Exception {
@@ -85,7 +91,7 @@ public class SchemaCommand implements Callable<Integer> {
             SchemaSnapshot mapped = ctx.pipeline().applyTypeMapping(raw);
             Path out = output != null ? output : Path.of(ctx.appConfig().getOutput().getBaseDir());
             ctx.registry().require(SnapshotStore.class).save(mapped, out);
-            new SchemaExportService(ctx).writeSnapshot(mapped, out, tag);
+            new SchemaExportService(ctx).writeSnapshot(mapped, out, tag, splitTables);
             return 0;
         }
     }
@@ -131,12 +137,15 @@ public class SchemaCommand implements Callable<Integer> {
         @CommandLine.Option(names = "--save-expected",
                 description = "Persist Oracle-derived canonical snapshot under output/snapshots/<tag>")
         boolean saveExpected;
+        @CommandLine.Option(names = "--generate-migration",
+                description = "Generate incremental migration DDL to make MySQL catch up with Oracle")
+        boolean generateMigration;
 
         @Override
         public Integer call() throws Exception {
             O2mContext ctx = ctx(config);
             DiffResult result = new LiveDiffService(ctx)
-                    .compare(oracleSchema, mysqlDb, tables, tag, saveExpected);
+                    .compare(oracleSchema, mysqlDb, tables, tag, saveExpected, generateMigration);
             Path reports = Path.of(ctx.appConfig().getOutput().getBaseDir()).resolve("reports");
             ctx.registry().require(SchemaMonitor.class).writeReports(result, reports);
             System.out.println("Live-diff: " + result.changes().size() + " changes, errors=" + result.hasErrors());

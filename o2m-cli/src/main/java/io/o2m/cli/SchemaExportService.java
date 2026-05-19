@@ -1,6 +1,7 @@
 package io.o2m.cli;
 
 import io.o2m.core.json.JsonSupport;
+import io.o2m.core.util.DependencySortUtil;
 import io.o2m.model.*;
 import io.o2m.spi.*;
 
@@ -19,12 +20,16 @@ public class SchemaExportService {
         this.ctx = ctx;
     }
 
-    public void export(String oracleSchema, String tag, Path outputDir, List<String> tables) throws Exception {
+    public void export(String oracleSchema, String tag, Path outputDir, List<String> tables, boolean splitTables) throws Exception {
         SchemaSnapshot snapshot = ctx.pipeline().collectOracle(oracleSchema, tables, tag);
-        writeSnapshot(snapshot, outputDir, tag);
+        writeSnapshot(snapshot, outputDir, tag, splitTables);
     }
 
     public void writeSnapshot(SchemaSnapshot snapshot, Path outputDir, String tag) throws Exception {
+        writeSnapshot(snapshot, outputDir, tag, false);
+    }
+
+    public void writeSnapshot(SchemaSnapshot snapshot, Path outputDir, String tag, boolean splitTables) throws Exception {
         Path out = outputDir != null ? outputDir : Path.of(ctx.appConfig().getOutput().getBaseDir());
         Path schemaDir = out.resolve("schema");
         Files.createDirectories(schemaDir);
@@ -43,13 +48,16 @@ public class SchemaExportService {
         for (TableMetadata table : snapshot.tables()) {
             GeneratedDdl o = oracleGen.generate(table);
             GeneratedDdl m = mysqlGen.generate(table);
-            String baseName = table.name().toLowerCase();
-            Files.writeString(schemaDir.resolve(baseName + ".oracle.sql"), o.oracleDdl() + "\n");
-            Files.writeString(schemaDir.resolve(baseName + ".mysql.sql"), m.mysqlDdl() + "\n");
+            if (splitTables) {
+                String baseName = table.name().toLowerCase();
+                Files.writeString(schemaDir.resolve(baseName + ".oracle.sql"), o.oracleDdl() + "\n");
+                Files.writeString(schemaDir.resolve(baseName + ".mysql.sql"), m.mysqlDdl() + "\n");
+            }
             appendDdl(oracleAll, o.oracleDdl());
             appendDdl(mysqlAll, m.mysqlDdl());
 
             TableCoverageReport report = coverage.validate(table);
+            String baseName = table.name().toLowerCase();
             JsonSupport.mapper().writeValue(schemaDir.resolve(baseName + ".coverage.json").toFile(), report);
             if (ctx.appConfig().getCoverage().isFailOnBlocker() && report.hasBlockers()) {
                 failures.add(table.name());

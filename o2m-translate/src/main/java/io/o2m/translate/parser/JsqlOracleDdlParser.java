@@ -106,7 +106,56 @@ public class JsqlOracleDdlParser implements DdlParser {
     }
 
     private void applyComment(List<TableMetadata> tables, Comment comment) {
-        // COMMENT ON TABLE/COLUMN handled in full import via separate statements - simplified
+        String text = comment.getComment() != null ? stripQuotes(comment.getComment().getValue()) : null;
+        if (text == null || text.isBlank()) return;
+
+        if (comment.getTable() != null) {
+            String tableName = comment.getTable().getName().replace("\"", "");
+            for (int i = 0; i < tables.size(); i++) {
+                TableMetadata t = tables.get(i);
+                if (t.name().equalsIgnoreCase(tableName)) {
+                    tables.set(i, new TableMetadata(t.schema(), t.name(), text,
+                            t.columns(), t.primaryKey(), t.uniqueKeys(),
+                            t.foreignKeys(), t.checks(), t.indexes()));
+                    break;
+                }
+            }
+        } else if (comment.getColumn() != null) {
+            String rawCol = comment.getColumn().getColumnName().replace("\"", "");
+            String tableName = null;
+            String colName = rawCol;
+
+            if (comment.getColumn().getTable() != null) {
+                tableName = comment.getColumn().getTable().getName().replace("\"", "");
+            } else if (rawCol.contains(".")) {
+                String[] parts = rawCol.split("\\.");
+                if (parts.length >= 2) {
+                    tableName = parts[parts.length - 2];
+                    colName = parts[parts.length - 1];
+                }
+            }
+            if (tableName == null) return;
+
+            for (int i = 0; i < tables.size(); i++) {
+                TableMetadata t = tables.get(i);
+                if (t.name().equalsIgnoreCase(tableName)) {
+                    List<ColumnMetadata> newCols = new ArrayList<>();
+                    for (ColumnMetadata col : t.columns()) {
+                        if (col.name().equalsIgnoreCase(colName)) {
+                            newCols.add(new ColumnMetadata(col.name(), col.oracleType(), col.dataLength(),
+                                    col.charLength(), col.dataPrecision(), col.dataScale(), col.nullable(),
+                                    col.defaultValue(), text, col.mysqlType(), col.typeMappingReason(),
+                                    col.manualReview()));
+                        } else {
+                            newCols.add(col);
+                        }
+                    }
+                    tables.set(i, new TableMetadata(t.schema(), t.name(), t.comment(),
+                            newCols, t.primaryKey(), t.uniqueKeys(), t.foreignKeys(), t.checks(), t.indexes()));
+                    break;
+                }
+            }
+        }
     }
 
     private String stripQuotes(String s) {

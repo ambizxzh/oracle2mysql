@@ -57,7 +57,8 @@ public class O2mContext {
         registry.register(DdlParser.class, new JsqlOracleDdlParser());
         registry.register(SnapshotStore.class, new FileSnapshotStore());
         registry.register(MigrationPlanner.class,
-                new DefaultMigrationPlanner(registry.require(SchemaComparator.class), appConfig.getMigration()));
+                new DefaultMigrationPlanner(registry.require(SchemaComparator.class), appConfig.getMigration(),
+                        appConfig.getRules(), registry.require(MysqlDdlGenerator.class)));
         registry.register(MigrationExecutor.class, new MysqlMigrationExecutor(mysqlDs, appConfig.getMigration()));
 
         registry.register(DataSource.class, mysqlDs);

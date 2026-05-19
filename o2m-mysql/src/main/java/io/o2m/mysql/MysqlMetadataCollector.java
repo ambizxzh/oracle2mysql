@@ -34,7 +34,21 @@ public class MysqlMetadataCollector implements MetadataCollector {
 
     private List<String> resolveTables(List<String> tableNames) throws SQLException {
         if (tableNames != null && !tableNames.isEmpty()) {
-            return tableNames;
+            // Filter out tables that don't exist in MySQL
+            String sql = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?";
+            try (Connection c = dataSource.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+                ps.setString(1, database);
+                List<String> existing = new ArrayList<>();
+                for (String name : tableNames) {
+                    ps.setString(2, name);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            existing.add(rs.getString(1));
+                        }
+                    }
+                }
+                return existing;
+            }
         }
         String sql = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = 'BASE TABLE' ORDER BY TABLE_NAME";
         try (Connection c = dataSource.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {

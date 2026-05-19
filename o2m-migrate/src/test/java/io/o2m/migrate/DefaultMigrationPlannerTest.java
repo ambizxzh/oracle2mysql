@@ -19,7 +19,9 @@ class DefaultMigrationPlannerTest {
                 .build();
         SchemaSnapshot from = new SchemaSnapshot("o", "HR", "v1", Instant.now(), List.of());
         SchemaSnapshot to = new SchemaSnapshot("o", "HR", "v2", Instant.now(), List.of(t2));
-        MigrationPlan plan = new DefaultMigrationPlanner(new DefaultSchemaComparator(new RulesConfig()), new MigrationConfig())
+        MigrationPlan plan = new DefaultMigrationPlanner(
+                        new DefaultSchemaComparator(new RulesConfig()), new MigrationConfig(),
+                        new RulesConfig(), t -> new GeneratedDdl(t.name(), null, "CREATE TABLE " + t.name() + ";"))
                 .plan(from, to);
         assertFalse(plan.changes().isEmpty());
     }

@@ -31,12 +31,12 @@ public class DefaultSchemaComparator implements SchemaComparator {
             var act = actual.findTable(tableName);
             if (exp.isEmpty()) {
                 changes.add(change(tableName, "TABLE", tableName, "exists", "false", "true",
-                        DiffSeverity.ERROR, "TABLE_MISSING_EXPECTED"));
+                        DiffSeverity.ERROR, "TABLE_MISSING_ACTUAL"));
                 continue;
             }
             if (act.isEmpty()) {
                 changes.add(change(tableName, "TABLE", tableName, "exists", "true", "false",
-                        DiffSeverity.ERROR, "TABLE_MISSING_ACTUAL"));
+                        DiffSeverity.ERROR, "TABLE_MISSING_EXPECTED"));
                 continue;
             }
             compareTable(exp.get(), act.get(), changes);

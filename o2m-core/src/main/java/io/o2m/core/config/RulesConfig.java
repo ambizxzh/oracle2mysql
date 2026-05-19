@@ -4,7 +4,7 @@ public class RulesConfig {
     private String identifierCase = "lower";
     private boolean quoteIdentifiers = true;
     private String charset = "utf8mb4";
-    private String collation = "utf8mb4_unicode_ci";
+    private String collation = "utf8mb4_bin";
     private String engine = "InnoDB";
 
     public String getIdentifierCase() { return identifierCase; }

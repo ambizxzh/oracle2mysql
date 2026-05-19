@@ -25,7 +25,7 @@ Oracle ALL_* / DDL parse → Canonical → TypeMapper → MysqlDdlGenerator
 
 - `MetadataCollector`
 - `TypeMappingStrategy`
-- `DdlGenerator`（Oracle / MySQL 实现类）
+- `OracleDdlGenerator` / `MysqlDdlGenerator`
 - `SchemaComparator`
 - `MigrationPlanner` / `MigrationExecutor`
 - `SnapshotStore`
